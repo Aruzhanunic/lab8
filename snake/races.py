@@ -1,78 +1,112 @@
-import pygame
+import random, sys,pygame
 pygame.init()
-black,white,yellow,red,blue,green=(0,0,0),(255,255,255),(255,255,0),(255,0,0),(0,0,255),(0,255,0)
-screen = pygame.display.set_mode((500,500))
+FPS = 60
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 600
+STEP = 5
+ENEMY_STEP = 10
+BLACK = (0, 0, 0)
+SCORE  = 0
+SURF = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # установление экрана
+pygame.display.set_caption("Aruka's racer game") #название экрана
 clock = pygame.time.Clock()
-game_over = False
-prev, cur = None, None
-mode='pen'
-color=black
-thickness=5
-screen.fill(white)
-def drawRectangle(screen, start, end, thickness, color):
-    x1,y1= start[0],start[1]
-    x2,y2 = end[0],end[1]
-    width = abs(x1-x2)
-    height = abs(y1-y2)
-    pygame.draw.rect(screen, color, (x1, y1, width, height), thickness)
-def drawCircle(screen, start, end, thickness, color):
-    x1,y1= start[0],start[1]
-    x2,y2 = end[0],end[1]
-    x = (x1 + x2) / 2
-    y = (y1 + y2) / 2 
-    #x and y here are the center of the circle
-    radius = abs(x1 - x2) / 2
-    pygame.draw.circle(screen, pygame.Color(color), (x, y), radius, thickness)
-while not game_over:
-  for event in pygame.event.get():
-    if event.type == pygame.QUIT:
-      game_over = True
-    if event.type == pygame.KEYDOWN:
-        if event.type == pygame.QUIT:
-            exit()
-        if event.type== pygame.KEYDOWN:
-            if event.key == pygame.K_1:
-                mode='rectangle'
-            if event.key == pygame.K_2:
-                mode='circle'
-            if event.key == pygame.K_p:
-                mode='pen'
-            if event.key == pygame.K_e: #white is used for eraser
-                mode='pen'
-                color=white
-            if event.key == pygame.K_g:
-                color =green
-            if event.key == pygame.K_b:
-                color =black
-            if event.key == pygame.K_r:
-                color =red
-    if mode=='pen':       
-      if event.type == pygame.MOUSEBUTTONDOWN:
-        prev = pygame.mouse.get_pos()
-      if event.type == pygame.MOUSEMOTION:
-        cur = pygame.mouse.get_pos()
-        if prev:
-          pygame.draw.line(screen, color, prev, cur, thickness)
-          prev = cur
-      if event.type == pygame.MOUSEBUTTONUP:
-        prev = None
-    else:
-        if event.type==pygame.MOUSEBUTTONDOWN:
-            draw=True
-            previousPos=event.pos
-        if event.type==pygame.MOUSEBUTTONUP:
-            if mode=='rectangle':
-                drawRectangle(screen,previousPos,event.pos,thickness,color)
-            elif mode=='circle':
-                drawCircle(screen,previousPos,event.pos,thickness,color)
-            else:
-                draw=False
-        if event.type == pygame.MOUSEBUTTONUP:
-            previousPos = None
-  pygame.display.flip()
-  clock.tick(60) # 60 is the normal fps
-pygame.quit()
-'''
-pygame.mouse.get_pos() returns a Tuple and event.pos is a Tuple. Both give you the position of the mouse pointer as a tuple with 2 components
+global NUM_OF_COINS
+NUM_OF_COINS=0
+score_font = pygame.font.SysFont("Verdana", 20) #шрифт для счетчиков
+bg = pygame.image.load("AnimatedStreet.png") #background
 
-'''
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.image.load("Enemy.png")
+        self.rect = self.image.get_rect()
+        self.rect.center = (random.randint(40, SCREEN_WIDTH - 40), 0) 
+
+    def update(self):
+        global SCORE
+        self.rect.move_ip(0, ENEMY_STEP)
+        if(self.rect.bottom > SCREEN_HEIGHT):
+            SCORE += 1 # если энеми проехал всю высоту экрана, это плюс к скору
+            self.top = 0
+            self.rect.center = (random.randint(30, 350), 0)
+            #генерирование новой позиции для машины
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.image.load("Player.png")
+        self.rect = self.image.get_rect()
+        self.rect.center = (160, 520)
+
+    def update(self):
+        pressed_keys = pygame.key.get_pressed() #get the state of all keyboard buttons
+        #the first if statements of each of the 2 following blocks of code
+        #is so that the player wouldn't leave the playing area we display in the pygame window
+        if self.rect.left > 0:
+            if pressed_keys[pygame.K_LEFT]:
+                self.rect.move_ip(-STEP, 0)
+
+        if self.rect.right < SCREEN_WIDTH:
+            if pressed_keys[pygame.K_RIGHT]:
+                self.rect.move_ip(STEP, 0)
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
+class Coin(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image=pygame.image.load('goldcoin.png')
+        self.image=pygame.transform.scale(self.image,(25,25))
+        self.rect=self.image.get_rect()
+        self.rect.center=(random.randint(40,SCREEN_WIDTH-40),0)
+    def update(self):
+        self.rect.move_ip(0,5)
+        if(self.rect.bottom>SCREEN_HEIGHT):
+            self.top=0
+            self.rect.center=(random.randint(30,350),0)
+    def spawn(self):
+        self.rect.center=(random.randint(30,350),0)
+    def draw(self,surface):
+        surface.blit(self.image,self.rect)
+P1 = Player()
+E1 = Enemy()
+C1=Coin()
+
+enemies = pygame.sprite.Group()
+enemies.add(E1)
+#adding coins to the sprite group
+coins=pygame.sprite.Group()
+coins.add(C1)
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    P1.update()
+    E1.update()
+    C1.update()
+    
+    if pygame.sprite.spritecollideany(P1, coins):
+       NUM_OF_COINS+=1
+       C1.spawn() #как только игрок тронул монету, нужно создать новую
+
+    if pygame.sprite.spritecollideany(P1, enemies):
+        pygame.quit()
+        sys.exit()
+
+    SURF.blit(bg, (0, 0))
+    score_img = score_font.render('Number of passing cars: '+str(SCORE), True, BLACK)
+    coin_score_img=score_font.render('Number of collected coins: '+str(NUM_OF_COINS),True,BLACK)
+    SURF.blit(score_img, (10, 10)) #позиция счетчика машин
+    SURF.blit(coin_score_img,(30,30)) #позиция счетчика монет
+    E1.draw(SURF)
+    P1.draw(SURF)
+    C1.draw(SURF)
+    pygame.display.update()
+    clock.tick(FPS)
